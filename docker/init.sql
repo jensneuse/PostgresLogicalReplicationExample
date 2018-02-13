@@ -1,0 +1,1 @@
+create user pgx_replication with replication password 'secret';
