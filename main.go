@@ -33,15 +33,16 @@ func main() {
 	}()
 
 	var cp string
-	var snapshot_name string
-	cp, snapshot_name, err = replicationConn.CreateReplicationSlotEx("pgx_test", "decoderbufs")
+	var snapshotName string
+	cp, snapshotName, err = replicationConn.CreateReplicationSlotEx("pgx_test", "decoderbufs")
 	if err != nil {
 		log.Fatalf("replication slot create failed: %v", err)
 	}
 	if cp == "" {
 		log.Fatal("consistent_point is empty")
 	}
-	if snapshot_name == "" {
+
+	if snapshotName == "" {
 		log.Fatal("snapshot_name is empty")
 	}
 
@@ -49,6 +50,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to start replication: %v", err)
 	}
+
+	log.Printf("Start replication - cp: %s; sn: %s\n",cp, snapshotName)
 
 	bgContext := context.Background()
 
@@ -59,44 +62,49 @@ func main() {
 			log.Fatal(err)
 		}
 
-		if message != nil && message.WalMessage != nil {
+		if message != nil {
+			if message.WalMessage != nil {
 
-			var msg decoderbufs.RowMessage
-			err = proto.Unmarshal(message.WalMessage.WalData, &msg)
-			if err != nil {
-				log.Println(err.Error())
-			} else {
+				var msg decoderbufs.RowMessage
+				err = proto.Unmarshal(message.WalMessage.WalData, &msg)
+				if err != nil {
+					log.Println(err.Error())
+				} else {
 
-				log.Println("--- MSG ---")
+					log.Println("--- MSG ---")
 
-				log.Printf("Table: %s", msg.GetTable())
-				log.Printf("Operation: %s", msg.Op.String())
+					log.Printf("WalStart: %d", message.WalMessage.WalStart)
+					log.Printf("ServerWalEnd: %d", message.WalMessage.ServerWalEnd)
+					log.Printf("Table: %s", msg.GetTable())
+					log.Printf("Operation: %s", msg.Op.String())
 
-				for _, field := range msg.NewTuple {
-					log.Println("--- FIELD ---")
+					for _, field := range msg.NewTuple {
+						log.Println("--- FIELD ---")
 
-					log.Printf("Field str: %s", field.String())
+						log.Printf("Field str: %s", field.String())
 
-					log.Printf("Field ColumnName: %s", field.GetColumnName())
-					log.Printf("Field ColumnType: %d", field.GetColumnType())
+						log.Printf("Field ColumnName: %s", field.GetColumnName())
+						log.Printf("Field ColumnType: %d", field.GetColumnType())
 
-					switch field.GetColumnType() {
-					case int64(23):
-						log.Printf("Field Int32: %d", field.GetDatumInt32())
-					case int64(25):
-					case int64(3802):
-						log.Printf("Field String: %s", field.GetDatumString())
+						switch field.GetColumnType() {
+						case int64(23):
+							log.Printf("Field Int32: %d", field.GetDatumInt32())
+						case int64(25):
+						case int64(3802):
+							log.Printf("Field String: %s", field.GetDatumString())
+						}
+
+						log.Println("--- FIELD_END ---")
 					}
 
-					log.Println("--- FIELD_END ---")
+					log.Println("--- END ---")
 				}
 
-				log.Println("--- END ---")
+			} else if message.ServerHeartbeat != nil {
+				log.Printf("heartbeat: %s", message.ServerHeartbeat.String())
+			} else {
+				log.Println("--- RAW ---")
 			}
-		}
-
-		if message != nil && message.ServerHeartbeat != nil {
-			log.Printf("heartbeat: %s", message.ServerHeartbeat.String())
 		}
 	}
 }
