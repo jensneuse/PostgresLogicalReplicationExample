@@ -1,4 +1,22 @@
-# Postgres Logical Replication to Golang
+# Postgres Logical Replication to Golang to Nats to everywhere..
+
+## Quickstart
+
+``
+sh ./nats/run_nats.sh
+``
+
+``
+sh ./docker/run.sh
+``
+
+``
+go run ./go_src/consumer/main.go    
+``
+
+``
+go run ./go_src/producer/main.go    
+``
 
 ## Why?
 

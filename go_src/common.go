@@ -1,1 +1,5 @@
-package go_src
+package common
+
+const (
+	TOPIC = "pgx"
+)
